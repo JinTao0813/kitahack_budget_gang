@@ -15,7 +15,7 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 
-##Object Detection Model
+## Object Detection Model
 For the object detection model, it was being train with YOLOv8 in Google Colab and being convert into TFLite model
 Things to justify is:
 In Google Colab notebook:
