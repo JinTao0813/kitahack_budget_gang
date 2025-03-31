@@ -17,7 +17,9 @@ samples, guidance on mobile development, and a full API reference.
 
 ## Object Detection Model
 For the object detection model, it was being train with YOLOv8 in Google Colab and being convert into TFLite model
+
 Things to justify is:
+
 In Google Colab notebook:
 - Remember to change your runtime to python3 and using online GPU
 - The public images that I collected from online: https://www.kaggle.com/datasets/ayuraj/asl-dataset
