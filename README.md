@@ -22,7 +22,7 @@ Things to justify is:
 
 In Google Colab notebook:
 - Remember to change your runtime to python3 and using online GPU
-- The public images that I collected from online: https://www.kaggle.com/datasets/ayuraj/asl-dataset
+- The public images that collected from online: https://www.kaggle.com/datasets/ayuraj/asl-dataset
 - Roboflow annotated public dataset: https://app.roboflow.com/cecilia-ggvz6/asldetection-o5fgv/1
   
 For Flutter:
