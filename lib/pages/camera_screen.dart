@@ -13,19 +13,20 @@ class CameraScreen extends StatefulWidget {
 
 class _CameraScreenState extends State<CameraScreen> {
   late CameraController _controller;
-  late Future<void>
-  _initializeControllerFuture; // This future will be used to check initialization
+  late Future<void> _initializeControllerFuture;
   late Interpreter _interpreter;
   List<Detection> _detections = [];
+  bool _isDetecting = true;
+  int _frameCount = 0;
 
   @override
   void initState() {
     super.initState();
-    _initializeCamera(); // Initialize the camera controller here
-    _loadModel(); // Load the TensorFlow Lite model here
+    _initializeCamera();
+    _loadModel(); // Load the model during initialization
   }
 
-  // Initialize the camera controller
+  // Initialize the camera
   Future<void> _initializeCamera() async {
     try {
       final cameras = await availableCameras();
@@ -36,9 +37,18 @@ class _CameraScreenState extends State<CameraScreen> {
       final firstCamera = cameras.first; // Select the first available camera
       _controller = CameraController(firstCamera, ResolutionPreset.medium);
 
-      // Wait for the camera to be initialized
+      // Start image stream to continuously get frames
+      _controller.startImageStream((CameraImage image) {
+        _frameCount++;
+        // Only run inference if _isDetecting is true and every 5th frame
+        if (_isDetecting && _frameCount % 5 == 0) {
+          _runInference(image);
+        }
+      });
+
+      // Wait for camera to initialize
       _initializeControllerFuture = _controller.initialize();
-      setState(() {}); // Ensure the UI is rebuilt after initialization
+      setState(() {});
     } catch (e) {
       print("Camera initialization error: $e");
     }
@@ -46,7 +56,128 @@ class _CameraScreenState extends State<CameraScreen> {
 
   // Load the TensorFlow Lite model
   Future<void> _loadModel() async {
-    _interpreter = await Interpreter.fromAsset('assets/yolov8m_float32.tflite');
+    try {
+      // Load the TensorFlow Lite model
+      _interpreter = await Interpreter.fromAsset(
+        'assets/yolov8m_float32.tflite',
+      );
+    } catch (e) {
+      print("Error loading model: $e");
+    }
+  }
+
+  // Run inference on the captured image
+  Future<void> _runInference(CameraImage image) async {
+    try {
+      final input = await _preprocessImage(image); // Preprocess image
+      var output = List.generate(
+        1,
+        (_) => List.generate(100, (_) => List.filled(6, 0.0)), // Output shape
+      );
+
+      _interpreter.run(input, output);
+      final detections = _parseDetections(output[0]);
+
+      setState(() {
+        _detections = detections;
+      });
+    } catch (e) {
+      print("Inference error: $e");
+    }
+  }
+
+  // Preprocess the image (resize, normalize, etc.)
+  Future<List<List<List<List<double>>>>> _preprocessImage(
+    CameraImage image,
+  ) async {
+    final img.Image rgbImage = _convertYUV420ToImage(image);
+    final resized = img.copyResize(
+      rgbImage,
+      width: 640,
+      height: 640,
+    ); // Resize image
+
+    final input = [
+      List.generate(
+        640,
+        (y) => List.generate(640, (x) {
+          final pixel = resized.getPixel(x, y);
+          return [
+            pixel.r / 255.0,
+            pixel.g / 255.0,
+            pixel.b / 255.0,
+          ]; // Normalize pixel values
+        }),
+      ),
+    ];
+
+    return input;
+  }
+
+  // Convert YUV420 image to RGB
+  img.Image _convertYUV420ToImage(CameraImage image) {
+    final width = image.width;
+    final height = image.height;
+    final imgBuffer = img.Image(width: width, height: height);
+
+    final plane0 = image.planes[0].bytes;
+    final plane1 = image.planes[1].bytes;
+    final plane2 = image.planes[2].bytes;
+
+    int uvRowStride = image.planes[1].bytesPerRow;
+    int uvPixelStride = image.planes[1].bytesPerPixel!;
+
+    for (int y = 0; y < height; y++) {
+      for (int x = 0; x < width; x++) {
+        int uvIndex = uvPixelStride * (x ~/ 2) + uvRowStride * (y ~/ 2);
+        int index = y * width + x;
+
+        final yp = plane0[index];
+        final up = plane1[uvIndex];
+        final vp = plane2[uvIndex];
+
+        int r = (yp + 1.370705 * (vp - 128)).round();
+        int g = (yp - 0.337633 * (up - 128) - 0.698001 * (vp - 128)).round();
+        int b = (yp + 1.732446 * (up - 128)).round();
+
+        imgBuffer.setPixelRgb(
+          x,
+          y,
+          r.clamp(0, 255),
+          g.clamp(0, 255),
+          b.clamp(0, 255),
+        );
+      }
+    }
+
+    return imgBuffer;
+  }
+
+  List<Detection> _parseDetections(List<List<double>> output) {
+    const threshold = 0.4;
+    List<Detection> results = [];
+
+    for (var i = 0; i < output.length; i++) {
+      final row = output[i];
+      final confidence = row[4];
+      if (confidence > threshold) {
+        final x = row[0];
+        final y = row[1];
+        final w = row[2];
+        final h = row[3];
+        final classId = row[5].toInt();
+
+        results.add(
+          Detection(
+            rect: Rect.fromLTWH(x - w / 2, y - h / 2, w, h),
+            classId: classId,
+            confidence: confidence,
+          ),
+        );
+      }
+    }
+
+    return results;
   }
 
   @override
@@ -60,21 +191,42 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Camera')),
-      body: FutureBuilder<void>(
-        future:
-            _initializeControllerFuture, // Ensure that the camera is initialized
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            // If the camera is initialized, show the preview
-            return CameraPreview(_controller);
-          } else if (snapshot.hasError) {
-            // If there's an error, show the error
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else {
-            // Otherwise, show a loading spinner while waiting for initialization
-            return const Center(child: CircularProgressIndicator());
-          }
-        },
+      body: Column(
+        children: [
+          Expanded(
+            child: FutureBuilder<void>(
+              future: _initializeControllerFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.done) {
+                  return Stack(
+                    children: [
+                      CameraPreview(_controller),
+                      CustomPaint(
+                        painter: BoundingBoxPainter(_detections, 640, 640),
+                      ),
+                    ],
+                  );
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else {
+                  return const Center(child: CircularProgressIndicator());
+                }
+              },
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                if (_isDetecting) {
+                  _isDetecting = false; // Pause inference
+                } else {
+                  _isDetecting = true; // Resume inference
+                }
+              });
+            },
+            child: Text(_isDetecting ? 'Pause Detection' : 'Resume Detection'),
+          ),
+        ],
       ),
     );
   }
