@@ -34,6 +34,18 @@ class _HomePageState extends State<HomePage> {
         elevation: 20,
       ),
       body: _pages[_selectedIndex],
+
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(
+            context,
+            '/camera',
+          ); // assuming you will define this route
+        },
+        child: const Icon(Icons.camera_alt),
+        backgroundColor: Colors.deepPurple[200],
+      ),
+
       bottomNavigationBar: BottomNavigationBar(
         backgroundColor: Colors.lightBlue[50],
         currentIndex: _selectedIndex,

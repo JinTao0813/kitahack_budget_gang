@@ -178,16 +178,13 @@ class _CameraScreenState extends State<CameraScreen> {
     return Scaffold(
       appBar: AppBar(title: const Text('Camera')),
       body: FutureBuilder<void>(
-        future: _initializeControllerFuture, // Await the initialization
+        future: _initializeControllerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
-            // Once the camera is initialized, show the camera preview
-            return CameraPreview(_controller);
-          } else if (snapshot.hasError) {
-            // Handle errors if the future fails
-            return Center(child: Text('Error: ${snapshot.error}'));
+            return CameraPreview(
+              _controller,
+            ); // Only show the camera preview, no bounding box or output
           } else {
-            // While the camera is initializing, show a loading indicator
             return const Center(child: CircularProgressIndicator());
           }
         },
