@@ -3,7 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
 import 'dart:io';
-import 'bounding_box_painter.dart'; // Ensure this path is correct
+import 'bounding_box_painter.dart';
 
 class CameraScreen extends StatefulWidget {
   const CameraScreen({super.key});
@@ -24,31 +24,24 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void initState() {
     super.initState();
-    _loadModel(); // Load the model during initialization
-    _initializeCamera(); // Initialize the camera
+    _loadModel();
+    _initializeCamera();
   }
 
-  // Initialize the camera
   Future<void> _initializeCamera() async {
     try {
       final cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        throw Exception("No cameras available");
-      }
+      if (cameras.isEmpty) throw Exception("No cameras available");
 
-      final firstCamera = cameras.first; // Select the first available camera
-      _controller = CameraController(firstCamera, ResolutionPreset.medium);
-
-      // Wait for the camera to initialize
+      final firstCamera = cameras.first;
+      _controller = CameraController(firstCamera, ResolutionPreset.low);
       _initializeControllerFuture = _controller.initialize();
 
-      // Start the image stream after initialization is complete
-      await _initializeControllerFuture; // Ensure initialization is completed before starting the stream
+      await _initializeControllerFuture;
 
-      // Start the image stream, process every 10th frame
       _controller.startImageStream((CameraImage image) {
         _frameCount++;
-        if (_isDetecting && _frameCount % 10 == 0) {
+        if (_isDetecting && _frameCount % 30 == 0) {
           _runInference(image);
         }
       });
@@ -59,37 +52,41 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  // Load the TensorFlow Lite model
   Future<void> _loadModel() async {
     try {
       _interpreter = await Interpreter.fromAsset(
         'assets/yolov8m_float32.tflite', // Ensure this path is correct
       );
       print("Model loaded successfully!");
+
+      // Debugging: Print input and output shapes
+      print('Input tensor shape: ${_interpreter.getInputTensor(0).shape}');
+      print('Output tensor shape: ${_interpreter.getOutputTensor(0).shape}');
     } catch (e) {
       print("Error loading model: $e");
     }
   }
 
-  // Run inference on the image
   Future<void> _runInference(CameraImage image) async {
     try {
-      final input = await _preprocessImage(image); // Preprocess the image
+      final input = await _preprocessImage(image);
 
-      // Adjust the output shape based on the model's output (e.g., 84 detections with 8400 values each)
-      var output = List.generate(
+      // Allocate correct output shape
+      List<List<List<double>>> output = List.generate(
         1,
-        (_) => List.generate(
-          84,
-          (_) => List.filled(8400, 0.0),
-        ), // Adjust based on model's output
+        (_) => List.generate(84, (_) => List.filled(8400, 0.0)),
       );
 
-      // Run inference with the preprocessed image as input and capture the output
+      // Run inference
       _interpreter.run(input, output);
 
-      // Parse the model's output into detections
-      final detections = _parseDetections(output[0]);
+      // Transpose [1, 84, 8400] to [8400, 84]
+      List<List<double>> transposed = List.generate(
+        8400,
+        (i) => List.generate(84, (j) => output[0][j][i]),
+      );
+
+      final detections = _parseDetections(transposed);
 
       setState(() {
         _detections = detections;
@@ -97,9 +94,9 @@ class _CameraScreenState extends State<CameraScreen> {
 
       // Debugging: Print the number of detections and their details
       print("Detections: ${_detections.length}");
-      for (var detection in _detections) {
+      for (var d in _detections) {
         print(
-          "Detected Gesture: Class ${detection.classId}, Confidence ${(detection.confidence * 100).toStringAsFixed(1)}%",
+          "Detected Gesture: Class ${d.classId}, Confidence ${(d.confidence * 100).toStringAsFixed(1)}%",
         );
       }
     } catch (e) {
@@ -107,16 +104,12 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  // Preprocess the image (resize, normalize, etc.)
   Future<List<List<List<List<double>>>>> _preprocessImage(
     CameraImage image,
   ) async {
     final img.Image rgbImage = _convertYUV420ToImage(image);
-
-    // Resize the image to 640x640 for reduced memory usage
     final resized = img.copyResize(rgbImage, width: 640, height: 640);
 
-    // Instead of saving the image, just proceed with the image processing
     print('Image processed (no save).');
 
     final input = [
@@ -124,11 +117,7 @@ class _CameraScreenState extends State<CameraScreen> {
         640,
         (y) => List.generate(640, (x) {
           final pixel = resized.getPixel(x, y);
-          return [
-            pixel.r / 255.0, // Normalize Red channel
-            pixel.g / 255.0, // Normalize Green channel
-            pixel.b / 255.0, // Normalize Blue channel
-          ];
+          return [pixel.r / 255.0, pixel.g / 255.0, pixel.b / 255.0];
         }),
       ),
     ];
@@ -136,7 +125,6 @@ class _CameraScreenState extends State<CameraScreen> {
     return input;
   }
 
-  // Convert YUV420 image to RGB format
   img.Image _convertYUV420ToImage(CameraImage image) {
     final width = image.width;
     final height = image.height;
@@ -175,21 +163,28 @@ class _CameraScreenState extends State<CameraScreen> {
     return imgBuffer;
   }
 
-  // Modify the confidence threshold for detection
-  double detectionThreshold = 0.1;
+  double detectionThreshold = 0.4;
 
-  // Parse detections from model output
   List<Detection> _parseDetections(List<List<double>> output) {
     List<Detection> results = [];
-    for (var i = 0; i < output.length; i++) {
-      final row = output[i];
-      final confidence = row[4]; // Confidence score
+
+    for (var row in output) {
+      final confidence = row[4];
       if (confidence > detectionThreshold) {
         final x = row[0];
         final y = row[1];
         final w = row[2];
         final h = row[3];
-        final classId = row[5].toInt();
+
+        double maxScore = -1;
+        int classId = -1;
+        for (int i = 5; i < row.length; i++) {
+          if (row[i] > maxScore) {
+            maxScore = row[i];
+            classId = i - 5;
+          }
+        }
+
         results.add(
           Detection(
             rect: Rect.fromLTWH(x, y, w, h),
@@ -199,10 +194,10 @@ class _CameraScreenState extends State<CameraScreen> {
         );
       }
     }
+
     return results;
   }
 
-  // Pause the camera stream
   void _pauseCamera() {
     setState(() {
       _isDetecting = false;
@@ -211,13 +206,12 @@ class _CameraScreenState extends State<CameraScreen> {
     });
   }
 
-  // Resume the camera stream
   void _resumeCamera() {
     setState(() {
       _isDetecting = true;
       _controller.startImageStream((CameraImage image) {
         _frameCount++;
-        if (_isDetecting && _frameCount % 10 == 0) {
+        if (_isDetecting && _frameCount % 30 == 0) {
           _runInference(image);
         }
       });
@@ -252,7 +246,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     ],
                   );
                 } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(child: Text('Error: \${snapshot.error}'));
                 } else {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -263,9 +257,9 @@ class _CameraScreenState extends State<CameraScreen> {
             onPressed: () {
               setState(() {
                 if (_isPaused) {
-                  _resumeCamera(); // Resume the camera stream
+                  _resumeCamera();
                 } else {
-                  _pauseCamera(); // Pause the camera stream
+                  _pauseCamera();
                 }
               });
             },
