@@ -5,23 +5,20 @@ class AboutPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        appBar: AppBar(
-          title: const Text('About'),
-          centerTitle: true,
-          backgroundColor: Colors.deepPurple[100],
-          elevation: 20,
-        ),
-        body: Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              const Text('About Page', style: TextStyle(fontSize: 24)),
-              const SizedBox(height: 20),
-            ],
-          ),
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text('About'),
+        centerTitle: true,
+        backgroundColor: Colors.deepPurple[100],
+        elevation: 20,
+      ),
+      body: Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: const [
+            Text('About Page', style: TextStyle(fontSize: 24)),
+            SizedBox(height: 20),
+          ],
         ),
       ),
     );

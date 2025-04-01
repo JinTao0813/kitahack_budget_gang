@@ -15,72 +15,87 @@ class _CameraScreenState extends State<CameraScreen> {
   late CameraController _controller;
   late Future<void> _initializeControllerFuture;
   late Interpreter _interpreter;
-  List<Detection> _detections =
-      []; // This will still be updated, but we won't show it for now
+  List<Detection> _detections = [];
+  bool _isDetecting = true;
+  int _frameCount = 0;
 
   @override
   void initState() {
     super.initState();
     _initializeCamera();
-    _loadModel();
+    _loadModel(); // Load the model during initialization
   }
 
   // Initialize the camera
   Future<void> _initializeCamera() async {
-    final cameras = await availableCameras();
-    final firstCamera = cameras.first;
-    _controller = CameraController(firstCamera, ResolutionPreset.medium);
-    _initializeControllerFuture = _controller.initialize();
-    await _initializeControllerFuture;
+    try {
+      final cameras = await availableCameras();
+      if (cameras.isEmpty) {
+        throw Exception("No cameras available");
+      }
 
-    // Start the image stream for real-time inference
-    _controller.startImageStream((CameraImage image) async {
-      await _runInference(image); // Perform inference on each image frame
-    });
+      final firstCamera = cameras.first; // Select the first available camera
+      _controller = CameraController(firstCamera, ResolutionPreset.medium);
+
+      // Start image stream to continuously get frames
+      _controller.startImageStream((CameraImage image) {
+        _frameCount++;
+        // Only run inference if _isDetecting is true and every 5th frame
+        if (_isDetecting && _frameCount % 5 == 0) {
+          _runInference(image);
+        }
+      });
+
+      // Wait for camera to initialize
+      _initializeControllerFuture = _controller.initialize();
+      setState(() {});
+    } catch (e) {
+      print("Camera initialization error: $e");
+    }
   }
 
   // Load the TensorFlow Lite model
   Future<void> _loadModel() async {
-    _interpreter = await Interpreter.fromAsset('assets/yolov8m_float32.tflite');
+    try {
+      // Load the TensorFlow Lite model
+      _interpreter = await Interpreter.fromAsset(
+        'assets/yolov8m_float32.tflite',
+      );
+    } catch (e) {
+      print("Error loading model: $e");
+    }
   }
 
-  // Run inference
+  // Run inference on the captured image
   Future<void> _runInference(CameraImage image) async {
     try {
-      final input = await _preprocessImage(image); // Preprocess the image
+      final input = await _preprocessImage(image); // Preprocess image
       var output = List.generate(
         1,
-        (_) => List.generate(100, (_) => List.filled(6, 0.0)),
-      ); // Initialize output
+        (_) => List.generate(100, (_) => List.filled(6, 0.0)), // Output shape
+      );
 
-      // Run inference
       _interpreter.run(input, output);
-
-      final detections = _parseDetections(
-        output[0],
-      ); // Parse the output into detection objects
+      final detections = _parseDetections(output[0]);
 
       setState(() {
-        _detections =
-            detections; // Update the list of detections (but we won't show it yet)
+        _detections = detections;
       });
     } catch (e) {
       print("Inference error: $e");
     }
   }
 
-  // Image preprocessing function (resize, normalize, etc.)
+  // Preprocess the image (resize, normalize, etc.)
   Future<List<List<List<List<double>>>>> _preprocessImage(
     CameraImage image,
   ) async {
-    final img.Image rgbImage = _convertYUV420ToImage(
-      image,
-    ); // Convert YUV to RGB
+    final img.Image rgbImage = _convertYUV420ToImage(image);
     final resized = img.copyResize(
       rgbImage,
       width: 640,
       height: 640,
-    ); // Resize the image
+    ); // Resize image
 
     final input = [
       List.generate(
@@ -138,7 +153,6 @@ class _CameraScreenState extends State<CameraScreen> {
     return imgBuffer;
   }
 
-  // Parse the detections from the model's output
   List<Detection> _parseDetections(List<List<double>> output) {
     const threshold = 0.4;
     List<Detection> results = [];
@@ -177,29 +191,51 @@ class _CameraScreenState extends State<CameraScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: const Text('Camera')),
-      body: FutureBuilder<void>(
-        future: _initializeControllerFuture, // Await the initialization
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.done) {
-            // Once the camera is initialized, show the camera preview
-            return CameraPreview(_controller);
-          } else if (snapshot.hasError) {
-            // Handle errors if the future fails
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else {
-            // While the camera is initializing, show a loading indicator
-            return const Center(child: CircularProgressIndicator());
-          }
-        },
+      body: Column(
+        children: [
+          Expanded(
+            child: FutureBuilder<void>(
+              future: _initializeControllerFuture,
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.done) {
+                  return Stack(
+                    children: [
+                      CameraPreview(_controller),
+                      CustomPaint(
+                        painter: BoundingBoxPainter(_detections, 640, 640),
+                      ),
+                    ],
+                  );
+                } else if (snapshot.hasError) {
+                  return Center(child: Text('Error: ${snapshot.error}'));
+                } else {
+                  return const Center(child: CircularProgressIndicator());
+                }
+              },
+            ),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              setState(() {
+                if (_isDetecting) {
+                  _isDetecting = false; // Pause inference
+                } else {
+                  _isDetecting = true; // Resume inference
+                }
+              });
+            },
+            child: Text(_isDetecting ? 'Pause Detection' : 'Resume Detection'),
+          ),
+        ],
       ),
     );
   }
 }
 
 class Detection {
-  final Rect rect; // Bounding box coordinates
-  final int classId; // Class ID of the detected object
-  final double confidence; // Confidence of the detection
+  final Rect rect;
+  final int classId;
+  final double confidence;
 
   Detection({
     required this.rect,
