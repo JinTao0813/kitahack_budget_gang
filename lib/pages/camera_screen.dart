@@ -2,6 +2,7 @@ import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
+import 'dart:io';
 import 'bounding_box_painter.dart';
 
 class CameraScreen extends StatefulWidget {
@@ -18,95 +19,105 @@ class _CameraScreenState extends State<CameraScreen> {
   List<Detection> _detections = [];
   bool _isDetecting = true;
   int _frameCount = 0;
+  bool _isPaused = false;
 
   @override
   void initState() {
     super.initState();
+    _loadModel();
     _initializeCamera();
-    _loadModel(); // Load the model during initialization
   }
 
-  // Initialize the camera
   Future<void> _initializeCamera() async {
     try {
       final cameras = await availableCameras();
-      if (cameras.isEmpty) {
-        throw Exception("No cameras available");
-      }
+      if (cameras.isEmpty) throw Exception("No cameras available");
 
-      final firstCamera = cameras.first; // Select the first available camera
-      _controller = CameraController(firstCamera, ResolutionPreset.medium);
+      final firstCamera = cameras.first;
+      _controller = CameraController(firstCamera, ResolutionPreset.low);
+      _initializeControllerFuture = _controller.initialize();
 
-      // Start image stream to continuously get frames
+      await _initializeControllerFuture;
+
       _controller.startImageStream((CameraImage image) {
         _frameCount++;
-        // Only run inference if _isDetecting is true and every 5th frame
-        if (_isDetecting && _frameCount % 5 == 0) {
+        if (_isDetecting && _frameCount % 30 == 0) {
           _runInference(image);
         }
       });
 
-      // Wait for camera to initialize
-      _initializeControllerFuture = _controller.initialize();
       setState(() {});
     } catch (e) {
       print("Camera initialization error: $e");
     }
   }
 
-  // Load the TensorFlow Lite model
   Future<void> _loadModel() async {
     try {
-      // Load the TensorFlow Lite model
       _interpreter = await Interpreter.fromAsset(
-        'assets/yolov8m_float32.tflite',
+        'assets/yolov8m_float32.tflite', // Ensure this path is correct
       );
+      print("Model loaded successfully!");
+
+      // Debugging: Print input and output shapes
+      print('Input tensor shape: ${_interpreter.getInputTensor(0).shape}');
+      print('Output tensor shape: ${_interpreter.getOutputTensor(0).shape}');
     } catch (e) {
       print("Error loading model: $e");
     }
   }
 
-  // Run inference on the captured image
   Future<void> _runInference(CameraImage image) async {
     try {
-      final input = await _preprocessImage(image); // Preprocess image
-      var output = List.generate(
+      final input = await _preprocessImage(image);
+
+      // Allocate correct output shape
+      List<List<List<double>>> output = List.generate(
         1,
-        (_) => List.generate(100, (_) => List.filled(6, 0.0)), // Output shape
+        (_) => List.generate(84, (_) => List.filled(8400, 0.0)),
       );
 
+      // Run inference
       _interpreter.run(input, output);
-      final detections = _parseDetections(output[0]);
+
+      // Transpose [1, 84, 8400] to [8400, 84]
+      List<List<double>> transposed = List.generate(
+        8400,
+        (i) => List.generate(84, (j) => output[0][j][i]),
+      );
+
+      final detections = _parseDetections(transposed);
 
       setState(() {
         _detections = detections;
       });
+
+      // Debugging: Print the number of detections and their details
+      print("Detections: ${_detections.length}");
+      for (var d in _detections) {
+        print(
+          "Detected Gesture: Class ${d.classId}, Confidence ${(d.confidence * 100).toStringAsFixed(1)}%",
+        );
+      }
     } catch (e) {
       print("Inference error: $e");
     }
   }
 
-  // Preprocess the image (resize, normalize, etc.)
   Future<List<List<List<List<double>>>>> _preprocessImage(
     CameraImage image,
   ) async {
     final img.Image rgbImage = _convertYUV420ToImage(image);
-    final resized = img.copyResize(
-      rgbImage,
-      width: 640,
-      height: 640,
-    ); // Resize image
+    final resized = img.copyResize(rgbImage, width: 640, height: 640);
+
+    print('Image processed (no save).');
 
     final input = [
       List.generate(
         640,
         (y) => List.generate(640, (x) {
           final pixel = resized.getPixel(x, y);
-          return [
-            pixel.r / 255.0,
-            pixel.g / 255.0,
-            pixel.b / 255.0,
-          ]; // Normalize pixel values
+          return [pixel.r / 255.0, pixel.g / 255.0, pixel.b / 255.0];
         }),
       ),
     ];
@@ -114,7 +125,6 @@ class _CameraScreenState extends State<CameraScreen> {
     return input;
   }
 
-  // Convert YUV420 image to RGB
   img.Image _convertYUV420ToImage(CameraImage image) {
     final width = image.width;
     final height = image.height;
@@ -153,31 +163,60 @@ class _CameraScreenState extends State<CameraScreen> {
     return imgBuffer;
   }
 
+  double detectionThreshold = 0.4;
+
   List<Detection> _parseDetections(List<List<double>> output) {
-    const threshold = 0.4;
     List<Detection> results = [];
 
-    for (var i = 0; i < output.length; i++) {
-      final row = output[i];
+    for (var row in output) {
       final confidence = row[4];
-      if (confidence > threshold) {
+      if (confidence > detectionThreshold) {
         final x = row[0];
         final y = row[1];
         final w = row[2];
         final h = row[3];
-        final classId = row[5].toInt();
+
+        double maxScore = -1;
+        int classId = -1;
+        for (int i = 5; i < row.length; i++) {
+          if (row[i] > maxScore) {
+            maxScore = row[i];
+            classId = i - 5;
+          }
+        }
 
         results.add(
           Detection(
-            rect: Rect.fromLTWH(x - w / 2, y - h / 2, w, h),
-            classId: classId,
+            rect: Rect.fromLTWH(x, y, w, h),
             confidence: confidence,
+            classId: classId,
           ),
         );
       }
     }
 
     return results;
+  }
+
+  void _pauseCamera() {
+    setState(() {
+      _isDetecting = false;
+      _controller.stopImageStream();
+      _isPaused = true;
+    });
+  }
+
+  void _resumeCamera() {
+    setState(() {
+      _isDetecting = true;
+      _controller.startImageStream((CameraImage image) {
+        _frameCount++;
+        if (_isDetecting && _frameCount % 30 == 0) {
+          _runInference(image);
+        }
+      });
+      _isPaused = false;
+    });
   }
 
   @override
@@ -207,7 +246,7 @@ class _CameraScreenState extends State<CameraScreen> {
                     ],
                   );
                 } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: ${snapshot.error}'));
+                  return Center(child: Text('Error: \${snapshot.error}'));
                 } else {
                   return const Center(child: CircularProgressIndicator());
                 }
@@ -217,14 +256,14 @@ class _CameraScreenState extends State<CameraScreen> {
           ElevatedButton(
             onPressed: () {
               setState(() {
-                if (_isDetecting) {
-                  _isDetecting = false; // Pause inference
+                if (_isPaused) {
+                  _resumeCamera();
                 } else {
-                  _isDetecting = true; // Resume inference
+                  _pauseCamera();
                 }
               });
             },
-            child: Text(_isDetecting ? 'Pause Detection' : 'Resume Detection'),
+            child: Text(_isPaused ? 'Resume Detection' : 'Pause Detection'),
           ),
         ],
       ),
