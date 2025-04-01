@@ -59,8 +59,9 @@ class _CameraScreenState extends State<CameraScreen> {
     try {
       // Load the TensorFlow Lite model
       _interpreter = await Interpreter.fromAsset(
-        'assets/yolov8m_float32.tflite',
-      );
+        'assets/handgesture_model.tflite',
+      ); // Make sure this path is correct
+      print("Model loaded successfully!");
     } catch (e) {
       print("Error loading model: $e");
     }
@@ -69,18 +70,23 @@ class _CameraScreenState extends State<CameraScreen> {
   // Run inference on the captured image
   Future<void> _runInference(CameraImage image) async {
     try {
-      final input = await _preprocessImage(image); // Preprocess image
+      final input = await _preprocessImage(image); // Preprocess the image
       var output = List.generate(
         1,
-        (_) => List.generate(100, (_) => List.filled(6, 0.0)), // Output shape
+        (_) => List.generate(
+          100,
+          (_) => List.filled(6, 0.0),
+        ), // Assuming model outputs 100 detections with 6 values each (x, y, w, h, confidence, class)
       );
 
-      _interpreter.run(input, output);
+      _interpreter.run(input, output); // Run inference
+
       final detections = _parseDetections(output[0]);
 
       setState(() {
         _detections = detections;
       });
+      print("Detections: ${_detections.length}"); // Debugging output
     } catch (e) {
       print("Inference error: $e");
     }
@@ -91,22 +97,25 @@ class _CameraScreenState extends State<CameraScreen> {
     CameraImage image,
   ) async {
     final img.Image rgbImage = _convertYUV420ToImage(image);
+
+    // Resize the image to 640x640, which is standard for YOLOv8 models
     final resized = img.copyResize(
       rgbImage,
       width: 640,
       height: 640,
-    ); // Resize image
+    ); // Resize image to match YOLO's input size
 
+    // Normalize pixel values to be between 0 and 1 (model training likely used this normalization)
     final input = [
       List.generate(
         640,
         (y) => List.generate(640, (x) {
           final pixel = resized.getPixel(x, y);
           return [
-            pixel.r / 255.0,
-            pixel.g / 255.0,
-            pixel.b / 255.0,
-          ]; // Normalize pixel values
+            pixel.r / 255.0, // Normalize Red channel
+            pixel.g / 255.0, // Normalize Green channel
+            pixel.b / 255.0, // Normalize Blue channel
+          ];
         }),
       ),
     ];
@@ -154,26 +163,35 @@ class _CameraScreenState extends State<CameraScreen> {
   }
 
   List<Detection> _parseDetections(List<List<double>> output) {
-    const threshold = 0.4;
+    const threshold =
+        0.3; // Lower threshold to detect gestures with lower confidence
     List<Detection> results = [];
 
     for (var i = 0; i < output.length; i++) {
       final row = output[i];
-      final confidence = row[4];
+      final confidence = row[4]; // Confidence score
       if (confidence > threshold) {
         final x = row[0];
         final y = row[1];
         final w = row[2];
         final h = row[3];
-        final classId = row[5].toInt();
+        final classId = row[5].toInt(); // Class ID
 
         results.add(
           Detection(
-            rect: Rect.fromLTWH(x - w / 2, y - h / 2, w, h),
-            classId: classId,
-            confidence: confidence,
+            rect: Rect.fromLTWH(
+              x - w / 2,
+              y - h / 2,
+              w,
+              h,
+            ), // Bounding box coordinates
+            classId: classId, // Class ID (hand gesture class)
+            confidence: confidence, // Confidence score
           ),
         );
+
+        // Debugging: print class ID and confidence
+        print("Detected class: $classId, Confidence: ${confidence * 100}%");
       }
     }
 
