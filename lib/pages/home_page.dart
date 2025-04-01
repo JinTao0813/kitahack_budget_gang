@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:kitahack_budget_gang/pages/settings_page.dart';
 import 'package:kitahack_budget_gang/pages/about_page.dart';
+import 'package:kitahack_budget_gang/pages/camera_screen.dart'; // Import CameraScreen
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -37,10 +38,12 @@ class _HomePageState extends State<HomePage> {
 
       floatingActionButton: FloatingActionButton(
         onPressed: () {
+          // Debugging print statement
+          print("Navigating to Camera Screen");
           Navigator.pushNamed(
             context,
-            '/camera',
-          ); // assuming you will define this route
+            '/camera', // Make sure '/camera' is set correctly in main.dart
+          );
         },
         child: const Icon(Icons.camera_alt),
         backgroundColor: Colors.deepPurple[200],

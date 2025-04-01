@@ -17,7 +17,7 @@ class MyApp extends StatelessWidget {
       routes: {
         '/home': (context) => const HomePage(),
         '/camera':
-            (context) => const CameraScreen(), // Define route for CameraScreen
+            (context) => const CameraScreen(), // Ensure CameraScreen route
       },
     );
   }
