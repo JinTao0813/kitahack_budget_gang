@@ -1,8 +1,9 @@
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';
 import 'package:image/image.dart' as img;
-import 'dart:io';
+import 'dart:typed_data';
 import 'bounding_box_painter.dart';
 
 class CameraScreen extends StatefulWidget {
@@ -16,6 +17,7 @@ class _CameraScreenState extends State<CameraScreen> {
   late CameraController _controller;
   late Future<void> _initializeControllerFuture;
   late Interpreter _interpreter;
+  late List<String> _labels;
   List<Detection> _detections = [];
   bool _isDetecting = true;
   int _frameCount = 0;
@@ -24,8 +26,12 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   void initState() {
     super.initState();
-    _loadModel();
-    _initializeCamera();
+    _initializeEverything();
+  }
+
+  Future<void> _initializeEverything() async {
+    await _loadModel();
+    await _initializeCamera();
   }
 
   Future<void> _initializeCamera() async {
@@ -34,14 +40,19 @@ class _CameraScreenState extends State<CameraScreen> {
       if (cameras.isEmpty) throw Exception("No cameras available");
 
       final firstCamera = cameras.first;
-      _controller = CameraController(firstCamera, ResolutionPreset.low);
+      _controller = CameraController(
+      firstCamera,
+      ResolutionPreset.low,
+      imageFormatGroup: ImageFormatGroup.yuv420,
+      enableAudio: false,
+      );
       _initializeControllerFuture = _controller.initialize();
 
       await _initializeControllerFuture;
 
       _controller.startImageStream((CameraImage image) {
         _frameCount++;
-        if (_isDetecting && _frameCount % 30 == 0) {
+        if (_isDetecting && _frameCount % 60 == 0) {
           _runInference(image);
         }
       });
@@ -54,16 +65,17 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Future<void> _loadModel() async {
     try {
-      _interpreter = await Interpreter.fromAsset(
-        'assets/yolov8m_float32.tflite', // Ensure this path is correct
-      );
+      _interpreter = await Interpreter.fromAsset('assets/best_float16.tflite');
       print("Model loaded successfully!");
 
-      // Debugging: Print input and output shapes
+      final raw = await rootBundle.loadString('assets/labels.txt');
+      _labels = raw.split('\n').map((e) => e.trim()).toList();
+      print("Labels loaded: $_labels");
+
       print('Input tensor shape: ${_interpreter.getInputTensor(0).shape}');
       print('Output tensor shape: ${_interpreter.getOutputTensor(0).shape}');
     } catch (e) {
-      print("Error loading model: $e");
+      print("Error loading model or labels: $e");
     }
   }
 
@@ -71,29 +83,18 @@ class _CameraScreenState extends State<CameraScreen> {
     try {
       final input = await _preprocessImage(image);
 
-      // Allocate correct output shape
       List<List<List<double>>> output = List.generate(
         1,
-        (_) => List.generate(84, (_) => List.filled(8400, 0.0)),
+        (_) => List.generate(300, (_) => List.filled(6, 0.0)),
       );
 
-      // Run inference
       _interpreter.run(input, output);
-
-      // Transpose [1, 84, 8400] to [8400, 84]
-      List<List<double>> transposed = List.generate(
-        8400,
-        (i) => List.generate(84, (j) => output[0][j][i]),
-      );
-
-      final detections = _parseDetections(transposed);
+      final detections = _parseDetections(output[0]);
 
       setState(() {
         _detections = detections;
       });
 
-      // Debugging: Print the number of detections and their details
-      print("Detections: ${_detections.length}");
       for (var d in _detections) {
         print(
           "Detected Gesture: Class ${d.classId}, Confidence ${(d.confidence * 100).toStringAsFixed(1)}%",
@@ -104,22 +105,15 @@ class _CameraScreenState extends State<CameraScreen> {
     }
   }
 
-  Future<List<List<List<List<double>>>>> _preprocessImage(
-    CameraImage image,
-  ) async {
+  Future<List<List<List<List<double>>>>> _preprocessImage(CameraImage image) async {
     final img.Image rgbImage = _convertYUV420ToImage(image);
-    final resized = img.copyResize(rgbImage, width: 640, height: 640);
-
-    print('Image processed (no save).');
+    final resized = img.copyResize(rgbImage, width: 320, height: 320);
 
     final input = [
-      List.generate(
-        640,
-        (y) => List.generate(640, (x) {
-          final pixel = resized.getPixel(x, y);
-          return [pixel.r / 255.0, pixel.g / 255.0, pixel.b / 255.0];
-        }),
-      ),
+      List.generate(320, (y) => List.generate(320, (x) {
+            final pixel = resized.getPixel(x, y);
+            return [pixel.r / 255.0, pixel.g / 255.0, pixel.b / 255.0];
+          })),
     ];
 
     return input;
@@ -169,25 +163,42 @@ class _CameraScreenState extends State<CameraScreen> {
     List<Detection> results = [];
 
     for (var row in output) {
-      final confidence = row[4];
-      if (confidence > detectionThreshold) {
-        final x = row[0];
-        final y = row[1];
-        final w = row[2];
-        final h = row[3];
+       final xCenter = row[0] * 320; // scale from normalized to model input size
+       final yCenter = row[1] * 320;
+       final width = row[2] * 320;
+       final height = row[3] * 320;
+       final confidence = row[4];
+       final classId = row[5].toInt();
 
-        double maxScore = -1;
-        int classId = -1;
-        for (int i = 5; i < row.length; i++) {
-          if (row[i] > maxScore) {
-            maxScore = row[i];
-            classId = i - 5;
-          }
-        }
+      if (confidence > detectionThreshold &&
+      !xCenter.isNaN && !yCenter.isNaN &&
+      !width.isNaN && !height.isNaN) {
+        final w = width.clamp(0.0, 1.0);  // YOLO outputs are normalized [0,1]
+        final h = height.clamp(0.0, 1.0);
+        final left = (xCenter - w / 2).clamp(0.0, 1.0 - w);
+        final top = (yCenter - h / 2).clamp(0.0, 1.0 - h);
 
-        results.add(
-          Detection(
-            rect: Rect.fromLTWH(x, y, w, h),
+        // Shrink factor (e.g. 0.9 = 90% size)
+        const shrinkFactor = 0.9;
+
+        // Compute center
+        final centerX = (left + w / 2) * 320.0;
+        final centerY = (top + h / 2) * 320.0;
+
+        // Shrink width/height
+        final scaledW = w * 320.0 * shrinkFactor;
+        final scaledH = h * 320.0 * shrinkFactor;
+
+        // Re-center the box
+        final scaledLeft = centerX - scaledW / 2;
+        final scaledTop = centerY - scaledH / 2;
+
+        final rect = Rect.fromLTWH(scaledLeft, scaledTop, scaledW, scaledH);
+
+        print("📦 Box: x=${rect.left}, y=${rect.top}, w=${rect.width}, h=${rect.height}");
+
+         results.add(Detection(
+            rect: rect,
             confidence: confidence,
             classId: classId,
           ),
@@ -211,7 +222,7 @@ class _CameraScreenState extends State<CameraScreen> {
       _isDetecting = true;
       _controller.startImageStream((CameraImage image) {
         _frameCount++;
-        if (_isDetecting && _frameCount % 30 == 0) {
+        if (_isDetecting && _frameCount % 60 == 0) {
           _runInference(image);
         }
       });
@@ -229,43 +240,50 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Camera')),
-      body: Column(
-        children: [
-          Expanded(
-            child: FutureBuilder<void>(
-              future: _initializeControllerFuture,
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.done) {
-                  return Stack(
-                    children: [
-                      CameraPreview(_controller),
-                      CustomPaint(
-                        painter: BoundingBoxPainter(_detections, 640, 640),
-                      ),
-                    ],
-                  );
-                } else if (snapshot.hasError) {
-                  return Center(child: Text('Error: \${snapshot.error}'));
-                } else {
-                  return const Center(child: CircularProgressIndicator());
-                }
-              },
-            ),
-          ),
-          ElevatedButton(
-            onPressed: () {
-              setState(() {
-                if (_isPaused) {
-                  _resumeCamera();
-                } else {
-                  _pauseCamera();
-                }
-              });
-            },
-            child: Text(_isPaused ? 'Resume Detection' : 'Pause Detection'),
-          ),
-        ],
+      body: FutureBuilder<void>(
+        future: _initializeControllerFuture,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.done) {
+            return Stack(
+              children: [
+                Positioned.fill(
+                  child: CameraPreview(_controller),
+                ),
+                Positioned.fill(
+                  child: CustomPaint(
+                    size: Size.infinite, //ensures the custompaint gets the correct full size
+                    painter: BoundingBoxPainter(
+                      _detections,
+                      320,
+                      320,
+                      _labels,
+                    ),
+                  ),
+                ),
+                Positioned(
+                  bottom: 40,
+                  left: 20,
+                  child: ElevatedButton(
+                    onPressed: () {
+                      setState(() {
+                        if (_isPaused) {
+                          _resumeCamera();
+                        } else {
+                          _pauseCamera();
+                        }
+                      });
+                    },
+                    child: Text(_isPaused ? 'Resume Detection' : 'Pause Detection'),
+                  ),
+                ),
+              ],
+            );
+          } else if (snapshot.hasError) {
+            return Center(child: Text('Error: ${snapshot.error}'));
+          } else {
+            return const Center(child: CircularProgressIndicator());
+          }
+        },
       ),
     );
   }

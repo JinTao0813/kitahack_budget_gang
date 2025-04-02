@@ -17,7 +17,7 @@ dependencies:
 
   image: ^4.0.17
   # Upgrade tflite_flutter to a newer version (e.g., 0.10.0)
-  tflite_flutter: ^0.10.0
+  tflite_flutter: ^0.11.0
 
   # Other dependencies
   path_provider: ^2.0.15
@@ -32,4 +32,7 @@ dev_dependencies:
 flutter:
   uses-material-design: true
   assets:
-    - assets/yolov8m_float32.tflite
+    - assets/best_float16.tflite
+    - assets/best_float32.tflite
+    - assets/hand1_5_bot_seg_1_cropped.jpeg
+    - assets/labels.txt
