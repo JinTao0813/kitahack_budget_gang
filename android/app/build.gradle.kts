@@ -21,19 +21,24 @@ android {
 
     defaultConfig {
         applicationId = "com.example.kitahack_budget_gang"
-        // Correct Kotlin DSL syntax for minSdkVersion
-        minSdkVersion(26) // This should be in a function call
+        minSdkVersion(26)
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
     }
 
     buildTypes {
-        release {
+        getByName("release") {
+            isMinifyEnabled = true
+            isShrinkResources = true
             signingConfig = signingConfigs.getByName("debug")
+            proguardFiles(
+                getDefaultProguardFile("proguard-android-optimize.txt"),
+                "proguard-rules.pro"
+            )
         }
     }
-}
+} // ← This one was missing
 
 flutter {
     source = "../.."
