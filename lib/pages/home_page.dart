@@ -100,13 +100,25 @@ class _HomePageState extends State<HomePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text('Home Page'),
-        centerTitle: true,
-        backgroundColor: Colors.deepPurple[100],
-        elevation: 20,
+      body: IndexedStack(
+        index: _selectedIndex,
+        children: [
+          // Home tab with AppBar
+          Scaffold(
+            appBar: AppBar(
+              title: const Text('Home Page'),
+              centerTitle: true,
+              backgroundColor: Colors.deepPurple[100],
+              elevation: 20,
+            ),
+            body: _pages()[0],
+          ),
+
+          // Settings and About have their own app bars
+          _pages()[1],
+          _pages()[2],
+        ],
       ),
-      body: _pages()[_selectedIndex],
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
           final result = await Navigator.pushNamed(context, '/camera');
