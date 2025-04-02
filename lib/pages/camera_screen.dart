@@ -41,7 +41,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
       _controller.startImageStream((CameraImage image) {
         _frameCount++;
-        if (_isDetecting && _frameCount % 30 == 0) {
+        if (_isDetecting && _frameCount % 60 == 0) {
           _runInference(image);
         }
       });
@@ -211,7 +211,7 @@ class _CameraScreenState extends State<CameraScreen> {
       _isDetecting = true;
       _controller.startImageStream((CameraImage image) {
         _frameCount++;
-        if (_isDetecting && _frameCount % 30 == 0) {
+        if (_isDetecting && _frameCount % 60 == 0) {
           _runInference(image);
         }
       });
@@ -260,10 +260,17 @@ class _CameraScreenState extends State<CameraScreen> {
                   _resumeCamera();
                 } else {
                   _pauseCamera();
+                  if (_detections.isNotEmpty) {
+                    final latestClass = _detections.first.classId;
+                    Navigator.pop(
+                      context,
+                      latestClass,
+                    ); // Send back to HomePage
+                  }
                 }
               });
             },
-            child: Text(_isPaused ? 'Resume Detection' : 'Pause Detection'),
+            child: Text(_isPaused ? 'Resume Detection' : 'Pause & Return'),
           ),
         ],
       ),
