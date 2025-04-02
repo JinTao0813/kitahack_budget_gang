@@ -5,8 +5,8 @@ class AboutPage extends StatelessWidget {
   const AboutPage({super.key});
 
   final List<Map<String, String>> teamMembers = const [
-    {'name': 'Wong Loo Perth', 'image': 'assets/wong.png'},
     {'name': 'Gan Zhi Yun', 'image': 'assets/gan.png'},
+    {'name': 'Wong Loo Perth', 'image': 'assets/wong.png'},
     {'name': 'Tan Ray Xiang', 'image': 'assets/tan.png'},
     {'name': 'Yap Jin Tao', 'image': 'assets/yap.png'},
   ];
