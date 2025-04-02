@@ -240,6 +240,7 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('Camera')),
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
@@ -270,6 +271,12 @@ class _CameraScreenState extends State<CameraScreen> {
                           _resumeCamera();
                         } else {
                           _pauseCamera();
+                          if (_detections.isNotEmpty) {
+                            final latestClass = _detections.first.classId;
+                            Navigator.pop(context, latestClass); // Return class ID
+                          } else {
+                            Navigator.pop(context); // Just go back
+                          }
                         }
                       });
                     },

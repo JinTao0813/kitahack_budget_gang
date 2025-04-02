@@ -11,9 +11,10 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-
+  flutter_markdown: ^0.6.14
   # Keep camera version 0.10.5+5
   camera: ^0.10.5+5
+  # (flutter pub add animate_do) run this in terminal to install animation
 
   image: ^4.0.17
   # Upgrade tflite_flutter to a newer version (e.g., 0.10.0)
@@ -23,7 +24,8 @@ dependencies:
   path_provider: ^2.0.15
   path: ^1.8.3
   cupertino_icons: ^1.0.8
-
+  http: ^0.13.5
+  animate_do: ^4.2.0
 dev_dependencies:
   flutter_test:
     sdk: flutter
@@ -36,3 +38,7 @@ flutter:
     - assets/best_float32.tflite
     - assets/hand1_5_bot_seg_1_cropped.jpeg
     - assets/labels.txt
+    - assets/wong.png
+    - assets/gan.png
+    - assets/tan.png
+    - assets/yap.png
