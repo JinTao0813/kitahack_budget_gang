@@ -53,6 +53,7 @@ class _CameraScreenState extends State<CameraScreen> {
 
       _controller.startImageStream((CameraImage image) {
         _frameCount++;
+
         if (_isDetecting && _frameCount % 30 == 0) {
           _runInference(image);
         }
@@ -66,7 +67,9 @@ class _CameraScreenState extends State<CameraScreen> {
 
   Future<void> _loadModel() async {
     try {
-      _interpreter = await Interpreter.fromAsset('assets/best_float16.tflite');
+
+      _interpreter = await Interpreter.fromAsset('assets/best_float32.tflite');
+
       final raw = await rootBundle.loadString('assets/labels.txt');
       _labels = raw.split('\n').map((e) => e.trim()).toList();
     } catch (e) {
@@ -152,21 +155,48 @@ class _CameraScreenState extends State<CameraScreen> {
     return buffer;
   }
 
-  double detectionThreshold = 0.4;
+  double detectionThreshold = 0.3;
 
   List<Detection> _parseDetections(List<List<double>> output) {
     List<Detection> results = [];
     for (var row in output) {
-      final x = row[0] * 320;
-      final y = row[1] * 320;
-      final w = row[2] * 320;
-      final h = row[3] * 320;
-      final confidence = row[4];
-      final classId = row[5].toInt();
-      if (confidence > detectionThreshold) {
-        results.add(
-          Detection(
-            rect: Rect.fromLTWH(x, y, w, h),
+
+       final xCenter = row[0] * 320; // scale from normalized to model input size
+        final yCenter = row[1] * 320;
+        final width = row[2] * 320;
+        final height = row[3] * 320;
+        final confidence = row[4];
+        final classId = row[5].toInt();
+ 
+       if (confidence > detectionThreshold &&
+       !xCenter.isNaN && !yCenter.isNaN &&
+       !width.isNaN && !height.isNaN) {
+         final w = width.clamp(0.0, 1.0);  // YOLO outputs are normalized [0,1]
+         final h = height.clamp(0.0, 1.0);
+         final left = (xCenter - w / 2).clamp(0.0, 1.0 - w);
+         final top = (yCenter - h / 2).clamp(0.0, 1.0 - h);
+ 
+         // Shrink factor (e.g. 0.9 = 90% size)
+         const shrinkFactor = 0.9;
+ 
+         // Compute center
+         final centerX = (left + w / 2) * 320.0;
+         final centerY = (top + h / 2) * 320.0;
+ 
+         // Shrink width/height
+         final scaledW = w * 320.0 * shrinkFactor;
+         final scaledH = h * 320.0 * shrinkFactor;
+ 
+         // Re-center the box
+         final scaledLeft = centerX - scaledW / 2;
+         final scaledTop = centerY - scaledH / 2;
+ 
+         final rect = Rect.fromLTWH(scaledLeft, scaledTop, scaledW, scaledH);
+ 
+         print("Box: x=${rect.left}, y=${rect.top}, w=${rect.width}, h=${rect.height}");
+ 
+          results.add(Detection(
+            rect: rect,
             confidence: confidence,
             classId: classId,
           ),
