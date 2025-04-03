@@ -27,6 +27,17 @@ For Flutter:
 After cloning this repository, remember to run these in your terminal:
 
 - flutter clean
+- flutter build apk --release
+- flutter install
 - flutter pub get
 - flutter gen-l10n
-- flutter run // optional, you can run in flutter run --release
+
+After these, you will need a USB cable to connect your Android phone 
+* You have to check this side by clicking it (in your VSCODE right hand side lower corner)
+ ![image](https://github.com/user-attachments/assets/af27178f-589e-4d2f-acee-edb39d8b726c)
+* It will then prompt out this thing
+ ![image](https://github.com/user-attachments/assets/c47cfedb-40ef-4827-92c5-be1e9fd4710b)
+* Please select the device you are going to run the app
+* flutter run // optional, you can run in flutter run --release
+
+
