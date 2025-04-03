@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:kitahack_budget_gang/pages/home_page.dart'; // Import HomePage
-import 'package:kitahack_budget_gang/pages/camera_screen.dart'; // Import CameraScreen
+import 'package:kitahack_budget_gang/pages/home_page.dart';
 
 void main() {
   runApp(MyApp());
@@ -12,12 +11,9 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Flutter Camera Example',
       theme: ThemeData(primarySwatch: Colors.blue),
-      home: const HomePage(), // Use HomePage as the starting screen
-      // Define routes
+      home: const HomePage(), // Start with HomePage
       routes: {
-        '/home': (context) => const HomePage(),
-        '/camera':
-            (context) => const CameraScreen(), // Ensure CameraScreen route
+        '/home': (context) => const HomePage(), // ✅ Only keep valid routes
       },
     );
   }
