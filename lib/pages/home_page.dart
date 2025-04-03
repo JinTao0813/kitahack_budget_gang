@@ -29,13 +29,13 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  void _fetchGeminiInfo(int? classId) async {
+  void _fetchGeminiInfo(List<int>? classIds) async {
     setState(() {
       _isLoading = true;
     });
 
     final gemini = GeminiService();
-    final info = await gemini.getASLInfo(classId);
+    final info = await gemini.getASLInfo(classIds);
 
     setState(() {
       _aslInfo = info;
@@ -103,7 +103,6 @@ class _HomePageState extends State<HomePage> {
       body: IndexedStack(
         index: _selectedIndex,
         children: [
-          // Home tab with AppBar
           Scaffold(
             appBar: AppBar(
               title: const Text('Home Page'),
@@ -113,16 +112,23 @@ class _HomePageState extends State<HomePage> {
             ),
             body: _pages()[0],
           ),
-
-          // Settings and About have their own app bars
           _pages()[1],
           _pages()[2],
         ],
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () async {
-          final result = await Navigator.pushNamed(context, '/camera');
-          _fetchGeminiInfo(result is int ? result : null);
+        onPressed: () {
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (_) => CameraScreen(
+                    onDetected: (List<int> classIds) {
+                      _fetchGeminiInfo(classIds); // 🔁 Pass whole list
+                    },
+                  ),
+            ),
+          );
         },
         child: const Icon(Icons.camera_alt),
         backgroundColor: Colors.deepPurple[200],
