@@ -44,104 +44,110 @@ class _HomePageState extends State<HomePage> {
     });
   }
 
-  List<Widget> _pages() => [
-    SingleChildScrollView(
-      padding: const EdgeInsets.all(16.0),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          const Text(
-            '🤟ASL Information',
-            style: TextStyle(
-              fontSize: 22,
-              fontWeight: FontWeight.bold,
-              color: Colors.deepPurple,
-            ),
-          ),
-          const SizedBox(height: 16),
-          if (_isLoading)
-            const Center(child: CircularProgressIndicator())
-          else if (_aslInfo.isNotEmpty)
-            Card(
-              elevation: 4,
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(16),
+  List<Widget> _pages(BuildContext context) => [
+    // Home tab content
+    Scaffold(
+      appBar: AppBar(
+        title: const Text('Home'),
+        centerTitle: true,
+        backgroundColor: Colors.deepPurple[100],
+        elevation: 20,
+      ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              '🤟 ASL Information',
+              style: TextStyle(
+                fontSize: 22,
+                fontWeight: FontWeight.bold,
+                color: Colors.deepPurple,
               ),
-              color: Colors.deepPurple[50],
-              child: Padding(
-                padding: const EdgeInsets.all(20.0),
-                child: MarkdownBody(
-                  data: _aslInfo,
-                  styleSheet: MarkdownStyleSheet.fromTheme(
-                    Theme.of(context),
-                  ).copyWith(
-                    p: const TextStyle(fontSize: 16, height: 1.5),
-                    h2: const TextStyle(
-                      fontSize: 20,
-                      fontWeight: FontWeight.bold,
+            ),
+            const SizedBox(height: 16),
+            if (_isLoading)
+              const Center(child: CircularProgressIndicator())
+            else if (_aslInfo.isNotEmpty)
+              Card(
+                elevation: 4,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
+                color: Colors.deepPurple[50],
+                child: Padding(
+                  padding: const EdgeInsets.all(20.0),
+                  child: MarkdownBody(
+                    data: _aslInfo,
+                    styleSheet: MarkdownStyleSheet.fromTheme(
+                      Theme.of(context),
+                    ).copyWith(
+                      p: const TextStyle(fontSize: 16, height: 1.5),
+                      h2: const TextStyle(
+                        fontSize: 20,
+                        fontWeight: FontWeight.bold,
+                      ),
+                      listBullet: const TextStyle(fontSize: 16),
                     ),
-                    listBullet: const TextStyle(fontSize: 16),
                   ),
                 ),
+              )
+            else
+              const Text(
+                'No ASL info yet. Use the camera to detect a sign.',
+                style: TextStyle(fontSize: 14, color: Colors.grey),
               ),
-            )
-          else
-            const Text(
-              'No ASL info yet. Use the camera to detect a sign.',
-              style: TextStyle(fontSize: 14, color: Colors.grey),
-            ),
-        ],
+          ],
+        ),
       ),
     ),
+
+    // Hand Language tab
     const SettingsPage(),
+
+    // About tab
     const AboutPage(),
   ];
 
   @override
   Widget build(BuildContext context) {
+    final pages = _pages(context);
+
     return Scaffold(
-      body: IndexedStack(
-        index: _selectedIndex,
-        children: [
-          Scaffold(
-            appBar: AppBar(
-              title: const Text('Home Page'),
-              centerTitle: true,
-              backgroundColor: Colors.deepPurple[100],
-              elevation: 20,
-            ),
-            body: _pages()[0],
-          ),
-          _pages()[1],
-          _pages()[2],
-        ],
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.push(
-            context,
-            MaterialPageRoute(
-              builder:
-                  (_) => CameraScreen(
-                    onDetected: (List<int> classIds) {
-                      _fetchGeminiInfo(classIds); // 🔁 Pass whole list
-                    },
-                  ),
-            ),
-          );
-        },
-        child: const Icon(Icons.camera_alt),
-        backgroundColor: Colors.deepPurple[200],
-      ),
+      body: IndexedStack(index: _selectedIndex, children: pages),
+      floatingActionButton:
+          _selectedIndex == 0
+              ? FloatingActionButton(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder:
+                          (_) => CameraScreen(
+                            onDetected: (List<int> classIds) {
+                              _fetchGeminiInfo(classIds);
+                            },
+                          ),
+                    ),
+                  );
+                },
+                child: const Icon(Icons.camera_alt),
+                backgroundColor: Colors.deepPurple[200],
+              )
+              : null,
       bottomNavigationBar: BottomNavigationBar(
+        type: BottomNavigationBarType.fixed, // 👈 Keeps labels fully visible
         backgroundColor: Colors.lightBlue[50],
         currentIndex: _selectedIndex,
+        selectedItemColor: Colors.deepPurple,
+        unselectedItemColor: Colors.grey[700],
         onTap: _navigateBottomNavBar,
         items: const [
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
-            icon: Icon(Icons.settings),
-            label: 'Settings',
+            icon: Icon(Icons.pan_tool_alt), // ✋ Hand gesture icon
+            label: 'Hand Language Converter',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.info), label: 'About'),
         ],
