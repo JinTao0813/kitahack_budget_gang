@@ -1,3 +1,4 @@
+// ==== camera_screen.dart (callback version) ====
 import 'package:camera/camera.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -7,7 +8,9 @@ import 'dart:typed_data';
 import 'bounding_box_painter.dart';
 
 class CameraScreen extends StatefulWidget {
-  const CameraScreen({super.key});
+  final void Function(List<int>) onDetected;
+
+  const CameraScreen({super.key, required this.onDetected});
 
   @override
   State<CameraScreen> createState() => _CameraScreenState();
@@ -22,6 +25,7 @@ class _CameraScreenState extends State<CameraScreen> {
   bool _isDetecting = true;
   int _frameCount = 0;
   bool _isPaused = false;
+  Set<int> _collectedClassIds = {}; // Collect unique detected numbers
 
   @override
   void initState() {
@@ -37,50 +41,45 @@ class _CameraScreenState extends State<CameraScreen> {
   Future<void> _initializeCamera() async {
     try {
       final cameras = await availableCameras();
-      if (cameras.isEmpty) throw Exception("No cameras available");
-
       final firstCamera = cameras.first;
       _controller = CameraController(
-      firstCamera,
-      ResolutionPreset.low,
-      imageFormatGroup: ImageFormatGroup.yuv420,
-      enableAudio: false,
+        firstCamera,
+        ResolutionPreset.low,
+        imageFormatGroup: ImageFormatGroup.yuv420,
+        enableAudio: false,
       );
       _initializeControllerFuture = _controller.initialize();
-
       await _initializeControllerFuture;
 
       _controller.startImageStream((CameraImage image) {
         _frameCount++;
-        if (_isDetecting && _frameCount %30 == 0) {
+
+        if (_isDetecting && _frameCount % 30 == 0) {
           _runInference(image);
         }
       });
 
       setState(() {});
     } catch (e) {
-      print("Camera initialization error: $e");
+      print("Camera init error: $e");
     }
   }
 
   Future<void> _loadModel() async {
     try {
+
       _interpreter = await Interpreter.fromAsset('assets/best_float32.tflite');
+
       final raw = await rootBundle.loadString('assets/labels.txt');
       _labels = raw.split('\n').map((e) => e.trim()).toList();
-      print("Labels loaded: $_labels");
-
-      print('Input tensor shape: ${_interpreter.getInputTensor(0).shape}');
-      print('Output tensor shape: ${_interpreter.getOutputTensor(0).shape}');
     } catch (e) {
-      print("Error loading model or labels: $e");
+      print("Model load error: $e");
     }
   }
 
   Future<void> _runInference(CameraImage image) async {
     try {
       final input = await _preprocessImage(image);
-
       List<List<List<double>>> output = List.generate(
         1,
         (_) => List.generate(300, (_) => List.filled(6, 0.0)),
@@ -94,38 +93,40 @@ class _CameraScreenState extends State<CameraScreen> {
       });
 
       for (var d in _detections) {
-        print(
-          "Detected Gesture: Class ${d.classId}, Confidence ${(d.confidence * 100).toStringAsFixed(1)}%",
-        );
+        if (d.confidence >= 0.3) {
+          if (_collectedClassIds.add(d.classId)) {
+            widget.onDetected(_collectedClassIds.toList());
+          }
+        }
       }
     } catch (e) {
       print("Inference error: $e");
     }
   }
 
-  Future<List<List<List<List<double>>>>> _preprocessImage(CameraImage image) async {
-    final img.Image rgbImage = _convertYUV420ToImage(image);
+  Future<List<List<List<List<double>>>>> _preprocessImage(
+    CameraImage image,
+  ) async {
+    final rgbImage = _convertYUV420ToImage(image);
     final resized = img.copyResize(rgbImage, width: 320, height: 320);
-
-    final input = [
-      List.generate(320, (y) => List.generate(320, (x) {
-            final pixel = resized.getPixel(x, y);
-            return [pixel.r / 255.0, pixel.g / 255.0, pixel.b / 255.0];
-          })),
+    return [
+      List.generate(
+        320,
+        (y) => List.generate(320, (x) {
+          final pixel = resized.getPixel(x, y);
+          return [pixel.r / 255.0, pixel.g / 255.0, pixel.b / 255.0];
+        }),
+      ),
     ];
-
-    return input;
   }
 
   img.Image _convertYUV420ToImage(CameraImage image) {
     final width = image.width;
     final height = image.height;
-    final imgBuffer = img.Image(width: width, height: height);
-
+    final buffer = img.Image(width: width, height: height);
     final plane0 = image.planes[0].bytes;
     final plane1 = image.planes[1].bytes;
     final plane2 = image.planes[2].bytes;
-
     int uvRowStride = image.planes[1].bytesPerRow;
     int uvPixelStride = image.planes[1].bytesPerPixel!;
 
@@ -133,7 +134,6 @@ class _CameraScreenState extends State<CameraScreen> {
       for (int x = 0; x < width; x++) {
         int uvIndex = uvPixelStride * (x ~/ 2) + uvRowStride * (y ~/ 2);
         int index = y * width + x;
-
         final yp = plane0[index];
         final up = plane1[uvIndex];
         final vp = plane2[uvIndex];
@@ -142,7 +142,7 @@ class _CameraScreenState extends State<CameraScreen> {
         int g = (yp - 0.337633 * (up - 128) - 0.698001 * (vp - 128)).round();
         int b = (yp + 1.732446 * (up - 128)).round();
 
-        imgBuffer.setPixelRgb(
+        buffer.setPixelRgb(
           x,
           y,
           r.clamp(0, 255),
@@ -152,15 +152,15 @@ class _CameraScreenState extends State<CameraScreen> {
       }
     }
 
-    return imgBuffer;
+    return buffer;
   }
 
   double detectionThreshold = 0.3;
 
   List<Detection> _parseDetections(List<List<double>> output) {
     List<Detection> results = [];
-
     for (var row in output) {
+
        final xCenter = row[0] * 320; // scale from normalized to model input size
         final yCenter = row[1] * 320;
         final width = row[2] * 320;
@@ -196,14 +196,13 @@ class _CameraScreenState extends State<CameraScreen> {
          print("Box: x=${rect.left}, y=${rect.top}, w=${rect.width}, h=${rect.height}");
  
           results.add(Detection(
-             rect: rect,
+            rect: rect,
             confidence: confidence,
             classId: classId,
           ),
         );
       }
     }
-
     return results;
   }
 
@@ -238,26 +237,39 @@ class _CameraScreenState extends State<CameraScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('Camera')),
       body: FutureBuilder<void>(
         future: _initializeControllerFuture,
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.done) {
             return Stack(
               children: [
-                Positioned.fill(
-                  child: CameraPreview(_controller),
-                ),
+                Positioned.fill(child: CameraPreview(_controller)),
                 Positioned.fill(
                   child: CustomPaint(
-                    size: Size.infinite, //ensures the custompaint gets the correct full size
-                    painter: BoundingBoxPainter(
-                      _detections,
-                      320,
-                      320,
-                      _labels,
-                    ),
+                    size: Size.infinite,
+                    painter: BoundingBoxPainter(_detections, 320, 320, _labels),
                   ),
                 ),
+                if (_isPaused)
+                  Positioned(
+                    top: 20,
+                    left: 20,
+                    child: Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.black.withOpacity(0.5),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                      child: Text(
+                        'Detected: ${_collectedClassIds.join(', ')}',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 16,
+                        ),
+                      ),
+                    ),
+                  ),
                 Positioned(
                   bottom: 40,
                   left: 20,
@@ -271,13 +283,13 @@ class _CameraScreenState extends State<CameraScreen> {
                         }
                       });
                     },
-                    child: Text(_isPaused ? 'Resume Detection' : 'Pause Detection'),
+                    child: Text(
+                      _isPaused ? 'Resume Detection' : 'Pause Detection',
+                    ),
                   ),
                 ),
               ],
             );
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
           } else {
             return const Center(child: CircularProgressIndicator());
           }
