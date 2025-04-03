@@ -147,7 +147,7 @@ class _HomePageState extends State<HomePage> {
           BottomNavigationBarItem(icon: Icon(Icons.home), label: 'Home'),
           BottomNavigationBarItem(
             icon: Icon(Icons.pan_tool_alt), // ✋ Hand gesture icon
-            label: 'Hand Language Converter',
+            label: 'Hand Language',
           ),
           BottomNavigationBarItem(icon: Icon(Icons.info), label: 'About'),
         ],
