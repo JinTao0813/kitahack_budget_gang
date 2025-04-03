@@ -25,7 +25,8 @@ For Flutter:
 
 ## How to use our app
 After cloning this repository, remember to run these in your terminal:
-flutter clean
-flutter pub get
-flutter gen-l10n
-flutter run // optional, you can run in flutter run --release
+
+- flutter clean
+- flutter pub get
+- flutter gen-l10n
+- flutter run // optional, you can run in flutter run --release
