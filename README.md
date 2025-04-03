@@ -23,7 +23,7 @@ For Flutter:
 - The tensorflow model that you are going integrate will be "yolov8n_float32.tflite" that was being located in (google_colab_file/best_saved_model (1)/content/runs/detect/train/weights/best_saved_model/best_float32.tflite) folder.
 - Please use import 'package:tflite_flutter/tflite_flutter.dart'; to import the tflite flutter so only can use the model inside
 
-##How to use our app
+## How to use our app
 After cloning this repository, remember to run these in your terminal:
 flutter clean
 flutter pub get
