@@ -2,6 +2,7 @@
 
 ---
 ## 📱About
+
 ---
 SeeSpeak is ann AI-powered Flutter app that bridges communication for the visually and hearing impaired.  
 It leverages real-time hand gesture recognition(YOLOv8 which then further converted to TFLite), and Gemini API for speech/sign conversion.
