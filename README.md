@@ -1,11 +1,11 @@
 # kitahack_budget_gang
 
-An AI-powered Flutter app that bridges communication for the visually and hearing impaired.  
-It leverages real-time hand gesture recognition(YOLOv8 which then further converted to TFLite), and Gemini API for speech/sign conversion.
-
 ---
-
-## 🚀 Tech Stack
+## 📱About
+---
+SeeSpeak is ann AI-powered Flutter app that bridges communication for the visually and hearing impaired.  
+It leverages real-time hand gesture recognition(YOLOv8 which then further converted to TFLite), and Gemini API for speech/sign conversion.
+---
 
 [![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
 [![Google Colab](https://img.shields.io/badge/Google%20Colab-F9AB00?style=for-the-badge&logo=google-colab&logoColor=white)](https://colab.research.google.com/)
@@ -16,7 +16,19 @@ It leverages real-time hand gesture recognition(YOLOv8 which then further conver
 [![Gemini API](https://img.shields.io/badge/Gemini%20API-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
 
 ---
+## 🤩 Features
 
+| 🚀 Feature                              | 💡 Description                                                                 |
+|----------------------------------------|--------------------------------------------------------------------------------  |
+| 🧤 Real-time Gesture Recognition        | Detects and classifies hand signs using a YOLOv8 TFLite model                  |
+| 🎤 Voice/Text-to-Sign Language Conversion    | Converts spoken words or text into signs or text using Gemini API                      |
+| 📸 Custom Camera Overlay                | Displays bounding boxes over detected hands in real-time                       |
+| 🔄 On-device AI Inference               | Runs TFLite models locally without internet for fast and secure predictions    |
+| 🌐 Gemini API Integration               | Enables natural language processing and AI-generated responses                 |
+| 🧪 Trained with Roboflow + Google Colab | Seamless training pipeline for detection models using YOLOv8 and TFLite        |
+| 📱 Mobile-optimized Interface           | Clean, accessible UI designed for visually and hearing impaired users          |
+
+---
 ## Getting Started
 
 This project is a starting point for a Flutter application.
