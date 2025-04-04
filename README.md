@@ -29,6 +29,11 @@ A few resources to get you started if this is your first Flutter project:
 For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
+
+## How to use our app
+```bash
+git clone https://github.com/JinTao0813/kitahack_budget_gang.git
+cd kitahack_budget_gang
   
 In Google Colab notebook:
 - Remember to change your runtime to python3 and using online GPU
@@ -38,11 +43,12 @@ In Google Colab notebook:
 For Flutter:
 - The tensorflow model that you are going integrate will be "best_float32.tflite" that was being located in (google_colab_file/best_saved_model (1)/content/runs/detect/train/weights/best_saved_model/best_float32.tflite) folder.
 - Please use this to import the tflite flutter so only can use the model inside
-  ##
-    import 'package:tflite_flutter/tflite_flutter.dart';
+  
+```bash
+import 'package:tflite_flutter/tflite_flutter.dart';
 
-## How to use our app
-After cloning this repository, remember to run these in your terminal:
+
+
 
 ##
   flutter clean
