@@ -83,4 +83,19 @@ After these, you will need a USB cable to connect your Android phone
 * Please select the device you are going to run the app
 * flutter run // optional, you can run in flutter run --release
 
+## 🛠️ Tech Stack
+
+| Category           | Technologies                                              | Purpose                                                                 |
+|--------------------|-----------------------------------------------------------|-------------------------------------------------------------------------|
+| **Framework**       | Flutter & Dart                                           | Cross-platform mobile UI development                                    |
+| **Model Training**  | YOLOv8, Roboflow, Google Colab                           | Object and gesture detection training & TFLite conversion               |
+| **AI Integration**  | TensorFlow Lite, Gemini API                              | Real-time on-device inference & speech/sign conversion                  |
+| **Camera & Vision** | Flutter Camera, Custom Overlay                           | Capturing frames and drawing detection boxes                            |
+| **Networking**      | Gemini API (via HTTP)                                    | Connecting to Google AI services for language interpretation            |
+| **UI Enhancement**  | Material Icons, Animations                               | Intuitive user experience and animated feedback                         |
+| **Utilities**       | Path Provider                                            | File system access                                                      |
+| **Configuration**   | Flutter dotenv                                           | Securely manage API keys and environment variables                      |
+
+
+
 
