@@ -67,7 +67,8 @@ cd kitahack_budget_gang
 ```bash
 https://colab.research.google.com/drive/15D9tFl1uxaIz92AXmjFSEZ5uxraCB9qn?usp=sharing
 ```
-After everything run finished and you got the zip folder, for us we placed it under the google_colab_file 
+After everything run finished and you got the zip folder, for us we placed it under the google_colab_file
+
 For Flutter:
 - The tensorflow model that you are going integrate will be "best_float32.tflite" that was being located in (google_colab_file/best_saved_model (1)/content/runs/detect/train/weights/best_saved_model/best_float32.tflite) folder.
 - Please use this to import the tflite flutter so only can use the model inside
