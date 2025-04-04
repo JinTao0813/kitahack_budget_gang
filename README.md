@@ -111,7 +111,6 @@ After these, you will need a USB cable to connect your Android phone
 | **Networking**      | Gemini API (via HTTP)                                    | Connecting to Google AI services for language interpretation            |
 | **UI Enhancement**  | Material Icons, Animations                               | Intuitive user experience and animated feedback                         |
 | **Utilities**       | Path Provider                                            | File system access                                                      |
-| **Configuration**   | Flutter dotenv                                           | Securely manage API keys and environment variables                      |
 
 
 ## 🎉Outcomes
