@@ -1,6 +1,21 @@
 # kitahack_budget_gang
 
-A new Flutter project.
+An AI-powered Flutter app that bridges communication for the visually and hearing impaired.  
+It leverages real-time hand gesture recognition(YOLOv8 which then further converted to TFLite), and Gemini API for speech/sign conversion.
+
+---
+
+## 🚀 Tech Stack
+
+[![Flutter](https://img.shields.io/badge/Flutter-02569B?style=for-the-badge&logo=flutter&logoColor=white)](https://flutter.dev/)
+[![Google Colab](https://img.shields.io/badge/Google%20Colab-F9AB00?style=for-the-badge&logo=google-colab&logoColor=white)](https://colab.research.google.com/)
+[![Dart](https://img.shields.io/badge/Dart-0175C2?style=for-the-badge&logo=dart&logoColor=white)](https://dart.dev/)
+[![TFLite](https://img.shields.io/badge/TFLite-FF6F00?style=for-the-badge&logo=tensorflow&logoColor=white)](https://www.tensorflow.org/lite)
+[![YOLO](https://img.shields.io/badge/YOLO-00FFFF?style=for-the-badge&logo=github&logoColor=black)](https://docs.ultralytics.com/)
+[![Roboflow](https://img.shields.io/badge/Roboflow-101010?style=for-the-badge&logo=roboflow&logoColor=white)](https://roboflow.com/)
+[![Gemini API](https://img.shields.io/badge/Gemini%20API-4285F4?style=for-the-badge&logo=google&logoColor=white)](https://ai.google.dev/)
+
+---
 
 ## Getting Started
 
@@ -22,16 +37,19 @@ In Google Colab notebook:
   
 For Flutter:
 - The tensorflow model that you are going integrate will be "best_float32.tflite" that was being located in (google_colab_file/best_saved_model (1)/content/runs/detect/train/weights/best_saved_model/best_float32.tflite) folder.
-- Please use import 'package:tflite_flutter/tflite_flutter.dart'; to import the tflite flutter so only can use the model inside
+- Please use this to import the tflite flutter so only can use the model inside
+  ##
+    import 'package:tflite_flutter/tflite_flutter.dart';
 
 ## How to use our app
 After cloning this repository, remember to run these in your terminal:
 
-- flutter clean
-- flutter build apk --release
-- flutter install
-- flutter pub get
-- flutter gen-l10n
+##
+  flutter clean
+##
+  flutter pub get
+##
+  flutter gen-l10n
 
 After these, you will need a USB cable to connect your Android phone 
 * You have to check this side by clicking it (in your VSCODE right hand side lower corner)
