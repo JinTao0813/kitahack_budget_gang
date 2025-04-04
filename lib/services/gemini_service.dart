@@ -2,7 +2,7 @@ import 'dart:convert';
 import 'package:http/http.dart' as http;
 
 class GeminiService {
-  final String apiKey = 'AIzaSyDbxHapbOMNXydDyQB85aVvOFj0P9_NVeg';
+  final String apiKey = ''; //please put your own api key in the ''
 
   Future<String> getASLInfo(List<int>? numbers) async {
     final prompt =
