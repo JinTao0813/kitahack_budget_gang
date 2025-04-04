@@ -102,5 +102,19 @@ After these, you will need a USB cable to connect your Android phone
 | **Configuration**   | Flutter dotenv                                           | Securely manage API keys and environment variables                      |
 
 
+## 🎉Outcomes
+(Mine is old phone with old screen protector and that's why you see the linings, so no worries! The app itself is fine!)
+
+![image](https://github.com/user-attachments/assets/20f35cd8-55cb-4026-98f2-5c37966c05d1)
+
+![image](https://github.com/user-attachments/assets/095948f6-b323-4ffe-bb70-f3523de8bb0f)
+
+![image](https://github.com/user-attachments/assets/47097284-005d-478d-bd36-b44f2e40493c)
+
+![image](https://github.com/user-attachments/assets/484c0048-4dd6-4b2b-8411-3f778806826b)
+
+
+
+
 
 
