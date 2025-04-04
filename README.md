@@ -58,18 +58,26 @@ git clone https://github.com/JinTao0813/kitahack_budget_gang.git
 ```bash
 cd kitahack_budget_gang
 ```
-2. Install Dependencies
+2. Go to /service/gemini_service.dart file:
+
+-As everyone api key is important to keep it for themselves, we had remove our own Gemini API keys. Please put in your own gemini api keys at this line:
+```bash
+final String apiKey = '';
+//Please put your gemini API keys inside the '' and you are good to go !
+```
+3. Install Dependencies
 ```bash
   flutter pub get
 ```
 ```bash
   flutter gen-l10n
 ```
-3. Run the app
+4. Run the app
 ```bash
   flutter run
   or optionally you can run flutter run --release
 ```
+
 ## Google Colab notebook for training AI model:
 - Remember to change your runtime to python3 and using online GPU
 - The public images that collected from online: https://www.kaggle.com/datasets/ayuraj/asl-dataset
