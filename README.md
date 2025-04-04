@@ -30,6 +30,14 @@ For help getting started with Flutter development, view the
 [online documentation](https://docs.flutter.dev/), which offers tutorials,
 samples, guidance on mobile development, and a full API reference.
 
+### Prerequisites
+
+- Flutter SDK version 3.29.2
+- Dart 3.7.2
+- IDE (VS Code)
+- AI training : Google Colab, Yolov8
+- Image annotation: Roboflow
+
 ## How to use our app
 1. Clone Repository
 ```bash
@@ -50,11 +58,16 @@ cd kitahack_budget_gang
   flutter run
   or optionally you can run flutter run --release
 ```
-In Google Colab notebook:
+## Google Colab notebook for training AI model:
 - Remember to change your runtime to python3 and using online GPU
 - The public images that collected from online: https://www.kaggle.com/datasets/ayuraj/asl-dataset
 - Roboflow annotated public dataset:  https://app.roboflow.com/cecilia-ggvz6/asldetection-o5fgv/2
-  
+## To see the full code on how to run:
+
+```bash
+https://colab.research.google.com/drive/15D9tFl1uxaIz92AXmjFSEZ5uxraCB9qn?usp=sharing
+```
+After everything run finished and you got the zip folder, for us we placed it under the google_colab_file 
 For Flutter:
 - The tensorflow model that you are going integrate will be "best_float32.tflite" that was being located in (google_colab_file/best_saved_model (1)/content/runs/detect/train/weights/best_saved_model/best_float32.tflite) folder.
 - Please use this to import the tflite flutter so only can use the model inside
@@ -62,9 +75,6 @@ For Flutter:
 ```bash
 import 'package:tflite_flutter/tflite_flutter.dart';
 ```
-
-
-
 After these, you will need a USB cable to connect your Android phone 
 * You have to check this side by clicking it (in your VSCODE right hand side lower corner)
  ![image](https://github.com/user-attachments/assets/af27178f-589e-4d2f-acee-edb39d8b726c)
