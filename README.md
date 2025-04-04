@@ -31,10 +31,25 @@ For help getting started with Flutter development, view the
 samples, guidance on mobile development, and a full API reference.
 
 ## How to use our app
+1. Clone Repository
 ```bash
 git clone https://github.com/JinTao0813/kitahack_budget_gang.git
+```
+```bash
 cd kitahack_budget_gang
-  
+```
+2. Install Dependencies
+```bash
+  flutter pub get
+```
+```bash
+  flutter gen-l10n
+```
+3. Run the app
+```bash
+  flutter run
+  or optionally you can run flutter run --release
+```
 In Google Colab notebook:
 - Remember to change your runtime to python3 and using online GPU
 - The public images that collected from online: https://www.kaggle.com/datasets/ayuraj/asl-dataset
@@ -46,16 +61,9 @@ For Flutter:
   
 ```bash
 import 'package:tflite_flutter/tflite_flutter.dart';
+```
 
 
-
-
-##
-  flutter clean
-##
-  flutter pub get
-##
-  flutter gen-l10n
 
 After these, you will need a USB cable to connect your Android phone 
 * You have to check this side by clicking it (in your VSCODE right hand side lower corner)
